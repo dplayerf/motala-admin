@@ -1,0 +1,59 @@
+// =====================================================================
+// MOTALAB — REGRAS DE SEGURANÇA DO FIREBASE
+// Cole cada bloco no Console Firebase → aba "Rules"
+// =====================================================================
+
+// ── FIRESTORE ──
+// Menu: Firestore Database → Rules
+// ─────────────────────────────────────────────────────────────────────
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // UIDs com permissão de admin — adicione os seus abaixo
+    function isAdmin() {
+      return request.auth != null && request.auth.uid in [
+        '2AjZZvjTKEd2Oz7GXKGjwIsU4f23',
+        '6pg3B2JbVjVjzfOEdpNbciW8X3k2',
+      ];
+    }
+
+    // Usuários: owner lê/escreve próprio doc; admin lê/escreve qualquer
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+                         && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Reserva de códigos únicos
+    match /codes/{codeId} {
+      allow read:           if request.auth != null;
+      allow create:         if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Bloqueio geral
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+// ── STORAGE ──
+// Menu: Storage → Rules
+// ─────────────────────────────────────────────────────────────────────
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /photos/{userId} {
+      allow read:  if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
