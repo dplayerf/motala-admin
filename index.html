@@ -87,6 +87,10 @@
     #app{display:none;min-height:100vh}
     #app.show{display:flex}
 
+
+
+
+
     /* sidebar */
     .sidebar{width:var(--sw);background:linear-gradient(180deg,var(--tnavy),var(--navy));display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;transition:transform .3s ease;overflow-y:auto}
     .sb-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
@@ -116,6 +120,7 @@
     .tb-reload:hover{background:#C8F0EE}
     .sb-toggle{display:none;width:36px;height:36px;border-radius:9px;background:var(--tpale);border:none;cursor:pointer;color:var(--tdeep);align-items:center;justify-content:center;flex-shrink:0}
     .sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+    .sb-ov.show{display:block}
     .sb-ov.show{display:block}
 
     .content{padding:20px;flex:1}
