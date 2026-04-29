@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotaLab — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --teal:#3DBFB8;--td:#1E8F8A;--tdeep:#166B67;--tnavy:#0E4F4D;
+      --tpale:#E0F7F6;--navy:#12323A;--off:#F4F7F7;--gray:#6B7280;
+      --glt:#F3F4F6;--green:#10B981;--red:#EF4444;--yellow:#F59E0B;
+      --blue:#3B82F6;--sw:240px;
+    }
+    html{-webkit-text-size-adjust:100%}
+    body{font-family:'Nunito',sans-serif;background:var(--off);color:var(--navy);overflow-x:hidden}
+
+    /* ── loading ── */
+    .lov{position:fixed;inset:0;background:rgba(255,255,255,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9999}
+    .lov.show{display:flex}
+    .sp{width:42px;height:42px;border:4px solid #C8F0EE;border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .lov p{color:var(--tdeep);font-size:14px;font-weight:600}
+
+    /* ── toast ── */
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--navy);color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:99999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 8px 28px rgba(0,0,0,.22);pointer-events:none;max-width:92vw;text-align:center}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    .toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+
+    /* ── modal base ── */
+    .mov{position:fixed;inset:0;z-index:3000;background:rgba(10,40,50,.72);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+    .mov.open{display:flex}
+    .mbox{background:#fff;border-radius:20px;width:100%;max-width:520px;box-shadow:0 32px 80px rgba(0,0,0,.24);overflow:hidden;animation:sup .32s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes sup{from{transform:translateY(36px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+    /* ── modal confirmação ── */
+    .conf-body{padding:28px 24px 8px;text-align:center}
+    .conf-icon{font-size:44px;margin-bottom:10px}
+    .conf-title{font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;color:var(--navy);margin-bottom:6px}
+    .conf-sub{font-size:13px;color:var(--gray);margin-bottom:20px;line-height:1.5}
+    .conf-btns{display:flex;gap:10px;padding:0 24px 24px}
+    .cbtn{flex:1;padding:13px;border:none;border-radius:11px;font-size:14px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .cbtn:hover{transform:translateY(-1px)}
+    .cg{background:var(--green);color:#fff}.cg:hover{box-shadow:0 6px 18px rgba(16,185,129,.4)}
+    .cr{background:var(--red);color:#fff}.cr:hover{box-shadow:0 6px 18px rgba(239,68,68,.4)}
+    .cb{background:var(--blue);color:#fff}.cb:hover{box-shadow:0 6px 18px rgba(59,130,246,.4)}
+    .cn{background:var(--glt);color:var(--navy)}.cn:hover{background:#E5E7EB}
+
+    /* ── modal detalhe ── */
+    .mhead{background:linear-gradient(135deg,var(--tdeep),var(--td));padding:18px 22px}
+    .mhead h3{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;color:#fff}
+    .mhead p{font-size:12px;color:rgba(255,255,255,.72);margin-top:2px}
+    .mbody{padding:20px 22px;max-height:60vh;overflow-y:auto}
+    .mfoot{padding:0 22px 20px;display:flex;gap:8px;flex-wrap:wrap}
+    .ud-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .ud-it{background:#F9FAFB;border-radius:10px;padding:11px 13px}
+    .ud-l{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+    .ud-v{font-size:13px;font-weight:600;color:var(--navy);word-break:break-word}
+    .ud-v.code{font-family:'Montserrat',sans-serif;color:var(--tdeep);letter-spacing:2px}
+    .ud-mt{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .ud-mr{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#F9FAFB;border-radius:9px;margin-bottom:6px}
+    .ud-ma{width:28px;height:28px;border-radius:50%;background:var(--tpale);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--tdeep);flex-shrink:0}
+    .ud-mn{font-size:13px;font-weight:600;color:var(--navy)}
+    .ud-mm{font-size:11px;color:var(--gray)}
+
+    /* ── login ── */
+    #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,var(--tnavy),var(--tdeep) 50%,var(--td));padding:20px}
+    .lcard{background:#fff;border-radius:24px;padding:38px 32px;width:100%;max-width:400px;box-shadow:0 40px 80px rgba(0,0,0,.3)}
+    .llogo{text-align:center;margin-bottom:24px}
+    .llogo img{height:66px;background:var(--tpale);border-radius:14px;padding:8px 16px}
+    .lbadge{display:inline-flex;align-items:center;gap:5px;background:var(--tpale);border:1px solid rgba(61,191,184,.3);border-radius:50px;padding:5px 14px;font-size:11px;font-weight:700;color:var(--tdeep);margin-top:8px}
+    .ltitle{font-family:'Montserrat',sans-serif;font-size:20px;font-weight:900;color:var(--navy);margin-bottom:4px}
+    .lsub{font-size:13px;color:var(--gray);margin-bottom:20px}
+    .field{margin-bottom:13px}
+    .field label{display:block;font-size:10px;font-weight:700;color:var(--navy);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
+    .field input{width:100%;padding:12px 13px;border:2px solid #E5E7EB;border-radius:11px;font-size:14px;font-family:'Nunito',sans-serif;color:var(--navy);outline:none;background:#FAFAFA;transition:.2s}
+    .field input:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 4px rgba(61,191,184,.1)}
+    .pw-w{position:relative}.pw-w input{padding-right:42px}
+    .pw-t{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px;opacity:.5;transition:.2s}
+    .pw-t:hover{opacity:1}
+    .lerr{display:flex;align-items:center;gap:7px;background:#FEE2E2;border:1px solid #FECACA;border-radius:9px;padding:10px 13px;font-size:12px;color:#991B1B;font-weight:600;margin-bottom:12px}
+    .btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--teal),var(--td));color:#fff;border:none;border-radius:13px;font-size:15px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(61,191,184,.4)}
+
+    /* ── app layout ── */
+    #app{display:none;min-height:100vh}
+    #app.show{display:flex}
+
+    /* sidebar */
+    .sidebar{width:var(--sw);background:linear-gradient(180deg,var(--tnavy),var(--navy));display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:200;transition:transform .3s ease;overflow-y:auto}
+    .sb-logo{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+    .sb-logo img{height:48px;background:#fff;border-radius:10px;padding:5px 10px;display:block}
+    .sb-badge{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:1.5px;text-transform:uppercase;margin-top:7px}
+    .sb-nav{padding:12px 8px;flex:1}
+    .sbi{display:flex;align-items:center;gap:9px;padding:10px 13px;border-radius:11px;cursor:pointer;color:rgba(255,255,255,.6);font-size:13px;font-weight:600;transition:.2s;margin-bottom:3px;border:none;background:none;width:100%;text-align:left}
+    .sbi:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.9)}
+    .sbi.active{background:rgba(61,191,184,.2);color:#A8E6E3}
+    .sbi .ic{font-size:16px;flex-shrink:0}
+    .sb-foot{padding:12px 8px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+    .sb-adm{display:flex;align-items:center;gap:9px;padding:9px 12px}
+    .sb-av{width:32px;height:32px;border-radius:50%;background:rgba(61,191,184,.25);border:2px solid rgba(61,191,184,.4);display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:800;color:#A8E6E3;flex-shrink:0}
+    .sb-aname{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sb-arole{font-size:10px;color:rgba(255,255,255,.35)}
+    .sb-out{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:11px;cursor:pointer;color:rgba(239,100,100,.7);font-size:12px;font-weight:600;transition:.2s;border:none;background:none;width:100%}
+    .sb-out:hover{background:rgba(239,68,68,.1);color:var(--red)}
+
+    /* main */
+    .main{margin-left:var(--sw);flex:1;min-height:100vh;display:flex;flex-direction:column}
+    .topbar{background:#fff;border-bottom:1px solid #E5E7EB;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px;flex-shrink:0}
+    .tb-left{display:flex;align-items:center;gap:10px}
+    .tb-title{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;color:var(--navy);white-space:nowrap}
+    .tb-right{display:flex;align-items:center;gap:8px}
+    .tb-date{font-size:12px;color:var(--gray);white-space:nowrap}
+    .tb-reload{width:34px;height:34px;border-radius:9px;background:var(--tpale);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tdeep);transition:.2s;flex-shrink:0}
+    .tb-reload:hover{background:#C8F0EE}
+    .sb-toggle{display:none;width:36px;height:36px;border-radius:9px;background:var(--tpale);border:none;cursor:pointer;color:var(--tdeep);align-items:center;justify-content:center;flex-shrink:0}
+    .sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+    .sb-ov.show{display:block}
+
+    .content{padding:20px;flex:1}
+
+    /* pages */
+    .page{display:none}.page.active{display:block}
+
+    /* stats */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+    .sc{background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:1px solid rgba(61,191,184,.1);display:flex;align-items:center;gap:12px}
+    .sc-ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+    .it{background:var(--tpale)}.ig{background:#D1FAE5}.iy{background:#FEF3C7}.ib{background:#DBEAFE}
+    .sc-val{font-family:'Montserrat',sans-serif;font-size:26px;font-weight:900;color:var(--navy);line-height:1}
+    .sc-lbl{font-size:12px;color:var(--gray);margin-top:2px}
+
+    /* tabela */
+    .tcard{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:1px solid rgba(61,191,184,.1);overflow:hidden}
+    .thead-row{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #F3F4F6;flex-wrap:wrap;gap:8px}
+    .thead-row h3{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:800;color:var(--navy)}
+    .sbox{display:flex;align-items:center;gap:7px;background:#F3F4F6;border-radius:9px;padding:7px 12px;flex:1;max-width:300px}
+    .sbox input{background:none;border:none;outline:none;font-size:13px;font-family:'Nunito',sans-serif;color:var(--navy);width:100%}
+    .twrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    table{width:100%;border-collapse:collapse;min-width:500px}
+    thead tr{background:#F9FAFB}
+    thead th{padding:10px 13px;text-align:left;font-size:10px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+    tbody tr{border-top:1px solid #F3F4F6;transition:.15s}
+    tbody tr:hover{background:#F0FDFC}
+    tbody td{padding:11px 13px;font-size:13px;color:var(--navy);vertical-align:middle}
+    .td-name{font-weight:700}
+    .td-code{font-family:'Montserrat',sans-serif;font-weight:700;color:var(--tdeep);letter-spacing:1.5px}
+    .tempty{padding:40px;text-align:center;color:var(--gray);font-size:13px}
+    .tempty div{font-size:28px;margin-bottom:8px}
+
+    /* badges */
+    .badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:50px;font-size:11px;font-weight:700;white-space:nowrap}
+    .badge.ativo{background:#D1FAE5;color:#065F46}
+    .badge.inativo{background:#FEE2E2;color:#991B1B}
+    .badge.pendente{background:#FEF3C7;color:#92400E}
+    .badge.vencido{background:#F3E8FF;color:#6B21A8}
+
+    /* botões de ação */
+    .act-btns{display:flex;gap:5px;flex-wrap:wrap}
+    .abtn{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s;border:none;white-space:nowrap;display:inline-flex;align-items:center;gap:3px}
+    .abtn:hover{transform:translateY(-1px)}
+    .abtn.val{background:#D1FAE5;color:#065F46}.abtn.val:hover{background:#A7F3D0;box-shadow:0 4px 10px rgba(16,185,129,.3)}
+    .abtn.ren{background:#DBEAFE;color:#1D4ED8}.abtn.ren:hover{background:#BFDBFE;box-shadow:0 4px 10px rgba(59,130,246,.3)}
+    .abtn.can{background:#FEE2E2;color:#991B1B}.abtn.can:hover{background:#FECACA;box-shadow:0 4px 10px rgba(239,68,68,.3)}
+    .abtn.ver{background:var(--tpale);color:var(--tdeep)}.abtn.ver:hover{background:#C8F0EE}
+    .abtn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+    /* paginação */
+    .pag{padding:11px 18px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F3F4F6;flex-wrap:wrap;gap:7px}
+    .pag-info{font-size:12px;color:var(--gray)}
+    .pag-btns{display:flex;gap:4px}
+    .pb{width:30px;height:30px;border-radius:7px;border:1px solid #E5E7EB;background:#fff;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);transition:.2s;display:flex;align-items:center;justify-content:center}
+    .pb:hover:not(:disabled){background:var(--tpale);border-color:var(--teal)}
+    .pb.cur{background:var(--teal);color:#fff;border-color:var(--teal)}
+    .pb:disabled{opacity:.35;cursor:not-allowed}
+
+    /* busca / validar */
+    .search-sec{background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:1px solid rgba(61,191,184,.1);margin-bottom:16px}
+    .search-sec h3{font-family:'Montserrat',sans-serif;font-size:14px;font-weight:800;color:var(--navy);margin-bottom:12px}
+    .srow{display:flex;gap:9px}
+    .sinp{flex:1;padding:11px 14px;border:2px solid #E5E7EB;border-radius:10px;font-size:14px;font-family:'Nunito',sans-serif;color:var(--navy);outline:none;background:#FAFAFA;transition:.2s}
+    .sinp:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 4px rgba(61,191,184,.1)}
+    .sbtn{padding:11px 20px;background:linear-gradient(135deg,var(--teal),var(--td));color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s;white-space:nowrap}
+    .sbtn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(61,191,184,.35)}
+
+    /* resultado busca */
+    .rcard{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:2px solid rgba(61,191,184,.2);overflow:hidden}
+    .rhead{background:linear-gradient(135deg,var(--tpale),#C8F0EE);padding:14px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .rav{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--tdeep),var(--tnavy));display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+    .rname{font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;color:var(--navy)}
+    .remail{font-size:12px;color:var(--gray);margin-top:1px}
+    .rgrid{display:grid;grid-template-columns:1fr 1fr}
+    .ri{padding:10px 18px;border-top:1px solid #F3F4F6}
+    .ri:nth-child(odd){border-right:1px solid #F3F4F6}
+    .ri-l{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+    .ri-v{font-size:13px;font-weight:600;color:var(--navy)}
+    .ri-v.code{font-family:'Montserrat',sans-serif;color:var(--tdeep);letter-spacing:2px}
+    .rmem{padding:12px 18px;border-top:1px solid #F3F4F6}
+    .rmem-t{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+    .rmem-row{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:13px;border-bottom:1px solid #F9FAFB}
+    .rmem-row:last-child{border-bottom:none}
+    .rmem-av{width:26px;height:26px;border-radius:50%;background:var(--tpale);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--tdeep);flex-shrink:0}
+    .ract{padding:12px 18px;border-top:1px solid #F3F4F6;display:flex;gap:7px;flex-wrap:wrap}
+    .nores{text-align:center;padding:30px;color:var(--gray)}
+    .nores div{font-size:26px;margin-bottom:6px}
+
+    /* validar cartão */
+    .val-wrap{max-width:560px}
+    .vres{margin-top:16px;border-radius:13px;overflow:hidden;animation:sup .3s ease}
+    .vrh{padding:14px 18px;display:flex;align-items:center;gap:10px}
+    .vrh.ok{background:linear-gradient(135deg,#D1FAE5,#A7F3D0)}
+    .vrh.no{background:linear-gradient(135deg,#FEE2E2,#FECACA)}
+    .vrh.exp{background:linear-gradient(135deg,#FEF3C7,#FDE68A)}
+    .vrh.pend{background:linear-gradient(135deg,#DBEAFE,#BFDBFE)}
+    .vri{font-size:30px}
+    .vrs{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800}
+    .vrh.ok .vrs{color:#065F46}.vrh.no .vrs{color:#991B1B}
+    .vrh.exp .vrs{color:#92400E}.vrh.pend .vrs{color:#1D4ED8}
+    .vrsu{font-size:12px;margin-top:2px}
+    .vrh.ok .vrsu{color:#047857}.vrh.no .vrsu{color:#B91C1C}
+    .vrh.exp .vrsu{color:#B45309}.vrh.pend .vrsu{color:#1E40AF}
+    .vrb{background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 13px 13px;padding:12px 18px}
+    .vrr{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:13px}
+    .vrr:last-child{border-bottom:none}
+    .vrrl{color:var(--gray)}.vrrv{font-weight:700;color:var(--navy)}
+
+    /* btn secundario */
+    .btn-sec{padding:10px 18px;border-radius:9px;background:var(--glt);color:var(--navy);border:none;font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .btn-sec:hover{background:#E5E7EB}
+    .btn-act-green{padding:10px 18px;border-radius:9px;background:var(--green);color:#fff;border:none;font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .btn-act-green:hover{background:#059669}
+    .btn-act-red{padding:10px 18px;border-radius:9px;background:var(--red);color:#fff;border:none;font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .btn-act-red:hover{background:#DC2626}
+    .btn-act-blue{padding:10px 18px;border-radius:9px;background:var(--blue);color:#fff;border:none;font-size:13px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;transition:.2s}
+    .btn-act-blue:hover{background:#1D4ED8}
+
+    /* ── busca rápida no dashboard ── */
+    .dash-search-bar{background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:1px solid rgba(61,191,184,.1);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+    .dash-search-bar svg{color:var(--gray);flex-shrink:0}
+    .dash-search-bar input{flex:1;border:none;outline:none;font-size:14px;font-family:'Nunito',sans-serif;color:var(--navy);background:none}
+    .dash-search-bar input::placeholder{color:#9CA3AF}
+    .dash-res{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(14,79,77,.06);border:1px solid rgba(61,191,184,.1);overflow:hidden;margin-bottom:16px;display:none}
+    .dash-res.show{display:block}
+    .dash-res-head{padding:10px 16px;font-size:11px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #F3F4F6;display:flex;justify-content:space-between;align-items:center}
+    .dash-res-item{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid #F9FAFB;cursor:pointer;transition:.15s}
+    .dash-res-item:last-child{border-bottom:none}
+    .dash-res-item:hover{background:#F0FDFC}
+    .dri-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--tdeep),var(--tnavy));display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
+    .dri-name{font-size:13px;font-weight:700;color:var(--navy)}
+    .dri-meta{font-size:11px;color:var(--gray);margin-top:1px}
+    .dri-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+    /* ── senha no modal ── */
+    .pw-section{background:#FFF8EC;border:1px solid #FDE68A;border-radius:12px;padding:13px 15px;margin-bottom:14px}
+    .pw-section-title{font-size:10px;font-weight:800;color:#92400E;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;display:flex;align-items:center;gap:5px}
+    .pw-row{display:flex;align-items:center;gap:8px}
+    .pw-val{flex:1;font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;color:var(--navy);letter-spacing:2px;filter:blur(5px);transition:.2s;user-select:none}
+    .pw-val.show{filter:none;user-select:text}
+    .pw-eye{padding:6px 10px;border-radius:8px;background:#FEF3C7;border:none;cursor:pointer;font-size:13px;transition:.2s;flex-shrink:0}
+    .pw-eye:hover{background:#FDE68A}
+    .pw-edit-row{margin-top:10px;display:none;gap:7px}
+    .pw-edit-row.show{display:flex}
+    .pw-inp{flex:1;padding:9px 12px;border:2px solid #E5E7EB;border-radius:9px;font-size:13px;font-family:'Nunito',sans-serif;color:var(--navy);outline:none;background:#fff;transition:.2s}
+    .pw-inp:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+    .pw-save{padding:9px 14px;background:var(--yellow);color:#78350F;border:none;border-radius:9px;font-size:12px;font-weight:700;font-family:'Montserrat',sans-serif;cursor:pointer;white-space:nowrap;transition:.2s}
+    .pw-save:hover{background:#D97706;color:#fff}
+
+    /* ── RESPONSIVO ── */
+    @media(max-width:900px){
+      .stats-grid{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:768px){
+      .sidebar{transform:translateX(-100%)}
+      .sidebar.open{transform:translateX(0);box-shadow:8px 0 40px rgba(0,0,0,.3)}
+      .main{margin-left:0}
+      .sb-toggle{display:flex}
+      .content{padding:14px}
+      .topbar{padding:0 14px;height:56px}
+      .tb-date{display:none}
+      /* modal mobile */
+      .mbox{border-radius:20px 20px 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;max-height:88vh}
+      .mov{align-items:flex-end;padding:0}
+      /* busca */
+      .srow{flex-direction:column}
+      .sinp{min-width:0}
+      /* resultado busca */
+      .rgrid{grid-template-columns:1fr}
+      .ri:nth-child(odd){border-right:none}
+      /* tabela mobile: cartão por linha */
+      table{min-width:0;width:100%}
+      thead{display:none}
+      tbody tr{display:flex;flex-direction:column;padding:12px 14px;border-top:1px solid #F3F4F6;gap:6px}
+      tbody td{padding:0;border:none;font-size:13px}
+      tbody td::before{content:attr(data-label);font-size:10px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:2px}
+      tbody td.td-actions::before{display:none}
+      .act-btns{margin-top:4px}
+      /* ud-grid mobile */
+      .ud-grid{grid-template-columns:1fr}
+    }
+    @media(max-width:480px){
+      .stats-grid{grid-template-columns:1fr}
+      .lcard{padding:28px 20px}
+      .thead-row{flex-direction:column;align-items:stretch}
+      .sbox{max-width:100%}
+    }
+  </style>
+</head>
+<body>
+
+<div class="lov" id="lov"><div class="sp"></div><p id="lovMsg">Carregando...</p></div>
+<div class="toast" id="toast"></div>
+<div class="sb-ov" id="sbOv" onclick="closeSb()"></div>
+
+<!-- Modal Confirmação -->
+<div class="mov" id="movConf">
+  <div class="mbox" style="max-width:380px">
+    <div class="conf-body">
+      <div class="conf-icon" id="confIcon">⚠️</div>
+      <div class="conf-title" id="confTitle">Confirmar ação</div>
+      <div class="conf-sub" id="confSub">Tem certeza?</div>
+    </div>
+    <div class="conf-btns">
+      <button class="cbtn cn" id="confNao">Cancelar</button>
+      <button class="cbtn" id="confSim">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhe Usuário -->
+<div class="mov" id="movUser">
+  <div class="mbox">
+    <div class="mhead"><h3 id="muNome">—</h3><p id="muEmail">—</p></div>
+    <div class="mbody" id="muBody"></div>
+    <div class="mfoot" id="muFoot"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo">
+      <img src="img/logo-motalab.png" alt="MotaLab">
+      <div><div class="lbadge">🔒 Painel Administrativo</div></div>
+    </div>
+    <div class="ltitle">Acesso Restrito</div>
+    <p class="lsub">Entre com suas credenciais de administrador.</p>
+    <div class="lerr" id="lerr" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="lerrMsg">E-mail ou senha incorretos.</span>
+    </div>
+    <div class="field"><label>E-mail</label><input type="email" id="adEmail" placeholder="admin@motalab.com.br" autocomplete="email"></div>
+    <div class="field"><label>Senha</label><div class="pw-w"><input type="password" id="adSenha" placeholder="Sua senha" autocomplete="current-password"><button type="button" class="pw-t" onclick="tgPw()">👁</button></div></div>
+    <button class="btn-login" onclick="doLogin()">Entrar no Painel →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <img src="img/logo-motalab.png" alt="MotaLab">
+      <div class="sb-badge">Admin Panel</div>
+    </div>
+    <nav class="sb-nav">
+      <button class="sbi active" id="nav-dash"     onclick="goPage('dash')">    <span class="ic">📊</span> Dashboard</button>
+      <button class="sbi"        id="nav-users"    onclick="goPage('users')">   <span class="ic">👥</span> Usuários</button>
+      <button class="sbi"        id="nav-search"   onclick="goPage('search')">  <span class="ic">🔍</span> Buscar por CPF</button>
+      <button class="sbi"        id="nav-validate" onclick="goPage('validate')"><span class="ic">✅</span> Validar Cartão</button>
+    </nav>
+    <div class="sb-foot">
+      <div class="sb-adm">
+        <div class="sb-av" id="sbAv">A</div>
+        <div><div class="sb-aname" id="sbName">Admin</div><div class="sb-arole">Administrador</div></div>
+      </div>
+      <button class="sb-out" onclick="doLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair do painel
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="tb-left">
+        <button class="sb-toggle" id="sbTgl" onclick="openSb()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="tb-title" id="tbTitle">Dashboard</div>
+      </div>
+      <div class="tb-right">
+        <div class="tb-date" id="tbDate"></div>
+        <button class="tb-reload" onclick="recarregar()" title="Recarregar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dash">
+        <!-- Busca rápida -->
+        <div class="dash-search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="dashSearch" placeholder="Buscar cliente por nome, CPF ou e-mail..." oninput="doDashSearch(this.value)">
+        </div>
+        <div class="dash-res" id="dashRes">
+          <div class="dash-res-head"><span>Resultados</span><button onclick="limparDashSearch()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--gray)">✕ Limpar</button></div>
+          <div id="dashResItems"></div>
+        </div>
+        <div class="stats-grid">
+          <div class="sc"><div class="sc-ic it">👥</div><div><div class="sc-val" id="stTotal">—</div><div class="sc-lbl">Total de cartões</div></div></div>
+          <div class="sc"><div class="sc-ic ig">✅</div><div><div class="sc-val" id="stAtivos">—</div><div class="sc-lbl">Cartões ativos</div></div></div>
+          <div class="sc"><div class="sc-ic iy">⏳</div><div><div class="sc-val" id="stPendentes">—</div><div class="sc-lbl">Aguardando validação</div></div></div>
+          <div class="sc"><div class="sc-ic ib">👨‍👩‍👧</div><div><div class="sc-val" id="stMembros">—</div><div class="sc-lbl">Total de participantes</div></div></div>
+        </div>
+        <div class="tcard">
+          <div class="thead-row">
+            <h3>📋 Todos os cadastros <span id="dashTotalLabel" style="font-size:12px;color:var(--gray);font-weight:600;margin-left:6px"></span></h3>
+          </div>
+          <div class="twrap"><table>
+            <thead><tr><th>Nome</th><th>CPF</th><th>Nº Cartão</th><th>Adesão</th><th>Status</th></tr></thead>
+            <tbody id="tblDash"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- USUÁRIOS -->
+      <div class="page" id="page-users">
+        <div class="tcard">
+          <div class="thead-row">
+            <h3>👥 Todos os usuários</h3>
+            <div class="sbox">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="filtro" placeholder="Nome, CPF ou e-mail..." oninput="filtrar()">
+            </div>
+          </div>
+          <div class="twrap"><table id="tblUsersWrap">
+            <thead><tr>
+              <th>Nome</th><th>CPF</th><th>Nº Cartão</th>
+              <th>Validade</th><th>Status</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="tblUsers"></tbody>
+          </table></div>
+          <div class="pag">
+            <div class="pag-info" id="pagInfo">—</div>
+            <div class="pag-btns" id="pagBtns"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUSCAR POR CPF -->
+      <div class="page" id="page-search">
+        <div class="search-sec">
+          <h3>🔍 Buscar usuário por CPF</h3>
+          <div class="srow">
+            <input type="text" class="sinp" id="cpfInput" placeholder="000.000.000-00" maxlength="14" oninput="mkCpf(this)">
+            <button class="sbtn" onclick="doBusca()">Buscar</button>
+          </div>
+        </div>
+        <div id="resCpf"></div>
+      </div>
+
+      <!-- VALIDAR CARTÃO -->
+      <div class="page" id="page-validate">
+        <div class="val-wrap">
+          <div class="search-sec">
+            <h3>✅ Validar cartão por código</h3>
+            <p style="font-size:13px;color:var(--gray);margin-bottom:12px">Digite os 8 dígitos do cartão para verificar a validade.</p>
+            <div class="srow">
+              <input type="text" class="sinp" id="codeInput" placeholder="Ex: 47829163" maxlength="8"
+                oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"
+                style="font-family:'Montserrat',sans-serif;font-size:20px;letter-spacing:5px;font-weight:700;text-align:center">
+              <button class="sbtn" onclick="doValidate()">Validar</button>
+            </div>
+          </div>
+          <div id="resVal"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js';
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, query, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
+
+const app  = initializeApp({ apiKey:'AIzaSyDyJmQUyNKLGMdUJhdK2YxCYuaQkel7uiI', authDomain:'mota-lab-e10e0.firebaseapp.com', projectId:'mota-lab-e10e0', storageBucket:'mota-lab-e10e0.firebasestorage.app', messagingSenderId:'1052790107201', appId:'1:1052790107201:web:6321f87d3b73f324bc6ac0' });
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+const ADMINS = new Set(['2AjZZvjTKEd2Oz7GXKGjwIsU4f23', '6pg3B2JbVjVjzfOEdpNbciW8X3k2']);
+let todos = [], filtrados = [], pg = 1;
+const PP = 10;
+
+/* utils */
+const ini    = n => { const p=(n||'').trim().split(' ').filter(Boolean); return p.length<2?(p[0]?.[0]||'?').toUpperCase():(p[0][0]+p[p.length-1][0]).toUpperCase(); };
+const fmtCod = c => { const s=String(c).padStart(8,'0'); return s.slice(0,4)+' '+s.slice(4); };
+const fmtN   = s => s ? s.split('-').reverse().join('/') : '—';
+
+const stCard = u => {
+  if (u.status === 'pendente') return 'pendente';
+  if (u.status !== 'ativo')   return 'inativo';
+  if (!u.dataVenc) return 'ativo';
+  const [d,m,y] = u.dataVenc.split('/');
+  return new Date(+y,+m-1,+d) < new Date() ? 'vencido' : 'ativo';
+};
+const bdgMap = { ativo:'✅ Ativo', inativo:'❌ Inativo', pendente:'⏳ Aguardando', vencido:'⚠️ Vencido' };
+const badge  = st => `<span class="badge ${st}">${bdgMap[st]||st}</span>`;
+
+function lov(show, msg) { document.getElementById('lovMsg').textContent=msg||'Carregando...'; document.getElementById('lov').classList.toggle('show',show); }
+function toast(msg, type) {
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast show'+(type?' '+type:'');
+  clearTimeout(t._t); t._t=setTimeout(()=>{t.className='toast';},3500);
+}
+
+/* confirmação */
+function conf({icon='⚠️',title='Confirmar',sub='',simLabel='Confirmar',simClass='cg'}) {
+  return new Promise(resolve => {
+    document.getElementById('confIcon').textContent  = icon;
+    document.getElementById('confTitle').textContent = title;
+    document.getElementById('confSub').textContent   = sub;
+    const sim = document.getElementById('confSim');
+    const nao = document.getElementById('confNao');
+    sim.textContent = simLabel;
+    sim.className   = 'cbtn ' + simClass;
+    document.getElementById('movConf').classList.add('open');
+    const res = v => { document.getElementById('movConf').classList.remove('open'); sim.removeEventListener('click',hs); nao.removeEventListener('click',hn); resolve(v); };
+    const hs=()=>res(true), hn=()=>res(false);
+    sim.addEventListener('click',hs); nao.addEventListener('click',hn);
+  });
+}
+
+/* auth */
+onAuthStateChanged(auth, async user => {
+  if (user) {
+    if (ADMINS.size>0 && !ADMINS.has(user.uid)) {
+      await signOut(auth);
+      document.getElementById('lerrMsg').textContent='Acesso negado.';
+      document.getElementById('lerr').style.display='flex';
+      return;
+    }
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').classList.add('show');
+    document.getElementById('sbAv').textContent   = (user.email?.[0]||'A').toUpperCase();
+    document.getElementById('sbName').textContent = user.email||'Admin';
+    document.getElementById('tbDate').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+    await loadUsers();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('app').classList.remove('show');
+  }
+});
+
+window.tgPw = () => { const e=document.getElementById('adSenha'); e.type=e.type==='password'?'text':'password'; };
+window.doLogin = async () => {
+  const email=document.getElementById('adEmail').value.trim();
+  const senha=document.getElementById('adSenha').value;
+  const lerr=document.getElementById('lerr'); lerr.style.display='none';
+  if (!email||!senha) { document.getElementById('lerrMsg').textContent='Preencha e-mail e senha.'; lerr.style.display='flex'; return; }
+  lov(true,'Verificando...');
+  try { await signInWithEmailAndPassword(auth,email,senha); }
+  catch(e) {
+    lov(false);
+    const m={'auth/invalid-credential':'E-mail ou senha incorretos.','auth/too-many-requests':'Muitas tentativas.','auth/network-request-failed':'Sem conexão.'};
+    document.getElementById('lerrMsg').textContent=m[e.code]||'Erro ao entrar.';
+    lerr.style.display='flex';
+  } finally { lov(false); }
+};
+window.doLogout = async () => {
+  const ok=await conf({icon:'🚪',title:'Sair do painel',sub:'Deseja encerrar a sessão?',simLabel:'Sair',simClass:'cr'});
+  if (ok) await signOut(auth);
+};
+
+/* carregar */
+async function loadUsers() {
+  lov(true,'Carregando usuários...');
+  try {
+    const snap = await getDocs(query(collection(db,'users'),orderBy('createdAt','desc')));
+    todos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    filtrados = [...todos];
+    updateStats(); renderDash(); renderUsers();
+  } catch(e) { console.error(e); toast('Erro ao carregar. Verifique as regras do Firestore.','err'); }
+  finally { lov(false); }
+}
+window.recarregar = () => loadUsers().then(()=>toast('Atualizado!','ok'));
+
+function updateStats() {
+  document.getElementById('stTotal').textContent    = todos.length;
+  document.getElementById('stAtivos').textContent   = todos.filter(u=>stCard(u)==='ativo').length;
+  document.getElementById('stPendentes').textContent= todos.filter(u=>stCard(u)==='pendente').length;
+  document.getElementById('stMembros').textContent  = todos.reduce((a,u)=>a+(u.membros?.length||0),0);
+}
+
+function renderDash() {
+  const tb    = document.getElementById('tblDash');
+  const label = document.getElementById('dashTotalLabel');
+  if (!todos.length) {
+    tb.innerHTML='<tr><td colspan="5" class="tempty"><div>📭</div>Nenhum cadastro.</td></tr>';
+    return;
+  }
+  if (label) label.textContent = '(' + todos.length + ' clientes)';
+  tb.innerHTML = todos.map(u=>`
+    <tr style="cursor:pointer" onclick="openUser('${u.id}')">
+      <td data-label="Nome" class="td-name">${u.nome}</td>
+      <td data-label="CPF">${u.cpf}</td>
+      <td data-label="Nº Cartão" class="td-code">${fmtCod(u.numCartao)}</td>
+      <td data-label="Adesão">${u.dataAdesao||'—'}</td>
+      <td data-label="Status">${badge(stCard(u))}</td>
+    </tr>`).join('');
+}
+
+/* busca rápida dashboard */
+window.doDashSearch = q => {
+  const div = document.getElementById('dashRes');
+  const items = document.getElementById('dashResItems');
+  q = q.trim().toLowerCase();
+  if (!q) { div.classList.remove('show'); return; }
+  const res = todos.filter(u =>
+    u.nome?.toLowerCase().includes(q) ||
+    u.cpf?.includes(q) ||
+    u.email?.toLowerCase().includes(q)
+  ).slice(0, 8);
+  div.classList.toggle('show', res.length > 0);
+  if (!res.length) { items.innerHTML = '<div style="padding:16px;text-align:center;font-size:13px;color:var(--gray)">Nenhum resultado.</div>'; return; }
+  items.innerHTML = res.map(u => {
+    const st = stCard(u);
+    return `<div class="dash-res-item" onclick="openUser('${u.id}');limparDashSearch()">
+      <div class="dri-av">${ini(u.nome)}</div>
+      <div>
+        <div class="dri-name">${u.nome}</div>
+        <div class="dri-meta">${u.cpf} · ${u.email}</div>
+      </div>
+      <div class="dri-right">${badge(st)}</div>
+    </div>`;
+  }).join('');
+};
+window.limparDashSearch = () => {
+  document.getElementById('dashSearch').value = '';
+  document.getElementById('dashRes').classList.remove('show');
+};
+
+window.filtrar = () => {
+  const q = document.getElementById('filtro').value.toLowerCase().trim();
+  filtrados = q ? todos.filter(u=>u.nome?.toLowerCase().includes(q)||u.cpf?.includes(q)||u.email?.toLowerCase().includes(q)) : [...todos];
+  pg=1; renderUsers();
+};
+
+function renderUsers() {
+  const tb  = document.getElementById('tblUsers');
+  const tot = filtrados.length;
+  const i0  = (pg-1)*PP, fim = Math.min(i0+PP,tot);
+  const lst = filtrados.slice(i0,fim);
+
+  if (!lst.length) { tb.innerHTML='<tr><td colspan="6" class="tempty"><div>🔍</div>Nenhum resultado.</td></tr>'; }
+  else tb.innerHTML = lst.map(u => {
+    const st = stCard(u);
+    /* Lógica de botões:
+       pendente  → Validar | Cancelar
+       ativo     → Renovar | Cancelar
+       vencido   → Validar | Renovar | Cancelar
+       inativo   → Validar
+    */
+    const btnVal = `<button class="abtn val" onclick="event.stopPropagation();ativar('${u.id}')">✅ Validar</button>`;
+    const btnRen = `<button class="abtn ren" onclick="event.stopPropagation();renovar('${u.id}')">🔄 Renovar</button>`;
+    const btnCan = `<button class="abtn can" onclick="event.stopPropagation();cancelar('${u.id}')">❌ Cancelar</button>`;
+    const btnVer = `<button class="abtn ver" onclick="event.stopPropagation();openUser('${u.id}')">Ver</button>`;
+    let btns = '';
+    if (st === 'pendente') btns = btnVal + btnCan;
+    else if (st === 'ativo')  btns = btnRen + btnCan;
+    else if (st === 'vencido') btns = btnVal + btnRen + btnCan;
+    else btns = btnVal; // inativo
+    return `
+      <tr style="cursor:pointer" onclick="openUser('${u.id}')">
+        <td data-label="Nome" class="td-name">${u.nome}</td>
+        <td data-label="CPF">${u.cpf}</td>
+        <td data-label="Nº Cartão" class="td-code">${fmtCod(u.numCartao)}</td>
+        <td data-label="Validade">${u.dataVenc||'—'}</td>
+        <td data-label="Status">${badge(st)}</td>
+        <td data-label="Ações" class="td-actions"><div class="act-btns">${btns}${btnVer}</div></td>
+      </tr>`;
+  }).join('');
+
+  const totalPgs = Math.max(1,Math.ceil(tot/PP));
+  document.getElementById('pagInfo').textContent = `${Math.min(i0+1,tot)}–${fim} de ${tot}`;
+  const btnsEl = document.getElementById('pagBtns'); btnsEl.innerHTML='';
+  const mkPb = (lbl,p,dis,cur) => {
+    const b=document.createElement('button'); b.className='pb'+(cur?' cur':'');
+    b.textContent=lbl; b.disabled=dis;
+    b.onclick=()=>{pg=p;renderUsers();}; btnsEl.appendChild(b);
+  };
+  mkPb('‹',pg-1,pg<=1,false);
+  for(let p=Math.max(1,pg-2);p<=Math.min(totalPgs,pg+2);p++) mkPb(p,p,false,p===pg);
+  mkPb('›',pg+1,pg>=totalPgs,false);
+}
+
+/* ações */
+window.ativar = async uid => {
+  const u = todos.find(x=>x.id===uid);
+  const ok = await conf({icon:'✅',title:'Validar pagamento',sub:`Confirmar que o pagamento de ${u?.nome||'este cliente'} foi recebido e ativar o cartão?`,simLabel:'Sim, ativar cartão',simClass:'cg'});
+  if (!ok) return;
+  lov(true,'Ativando...');
+  try {
+    await updateDoc(doc(db,'users',uid),{status:'ativo',updatedAt:serverTimestamp()});
+    const idx=todos.findIndex(x=>x.id===uid); if(idx>=0) todos[idx].status='ativo';
+    filtrados=[...todos]; updateStats(); renderDash(); renderUsers();
+    toast(`Cartão de ${u?.nome?.split(' ')[0]||'cliente'} ativado!`,'ok');
+  } catch(e) { console.error(e); toast('Erro ao ativar.','err'); } finally { lov(false); }
+};
+
+window.renovar = async uid => {
+  const u = todos.find(x=>x.id===uid);
+  if (!u) return;
+
+  // Calcula nova data: se cartão ainda ativo, soma 1 ano ao vencimento atual.
+  // Se vencido ou sem data, soma 1 ano a partir de hoje.
+  let baseVenc = new Date();
+  if (u.dataVenc) {
+    const [d,m,y] = u.dataVenc.split('/');
+    const atual = new Date(+y, +m-1, +d);
+    if (atual > new Date()) baseVenc = atual; // ainda válido — preserva tempo restante
+  }
+  const novaVenc = new Date(baseVenc);
+  novaVenc.setFullYear(novaVenc.getFullYear() + 1);
+  const novaVencStr = novaVenc.toLocaleDateString('pt-BR');
+
+  const ok = await conf({
+    icon:'🔄',
+    title:'Renovar assinatura',
+    sub:`Renovar o cartão de ${u.nome} por mais 12 meses? Nova validade: ${novaVencStr}`,
+    simLabel:'Sim, renovar',
+    simClass:'cb'
+  });
+  if (!ok) return;
+  lov(true,'Renovando...');
+  try {
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    await updateDoc(doc(db,'users',uid),{
+      status:   'ativo',
+      dataVenc: novaVencStr,
+      dataRenovacao: hoje,
+      updatedAt: serverTimestamp()
+    });
+    const idx = todos.findIndex(x=>x.id===uid);
+    if (idx>=0) {
+      todos[idx].status   = 'ativo';
+      todos[idx].dataVenc = novaVencStr;
+      todos[idx].dataRenovacao = hoje;
+    }
+    filtrados=[...todos]; updateStats(); renderDash(); renderUsers();
+    toast('Renovado até ' + novaVencStr + '! ✅','ok');
+  } catch(e) {
+    console.error('[renovar]', e);
+    toast('Erro ao renovar: ' + (e.code || e.message),'err');
+  } finally { lov(false); }
+};
+
+window.cancelar = async uid => {
+  const u = todos.find(x=>x.id===uid);
+  const ok = await conf({icon:'❌',title:'Cancelar assinatura',sub:`Cancelar o cartão de ${u?.nome||'este cliente'}? O acesso será bloqueado imediatamente.`,simLabel:'Sim, cancelar',simClass:'cr'});
+  if (!ok) return;
+  lov(true,'Cancelando...');
+  try {
+    await updateDoc(doc(db,'users',uid),{status:'inativo',updatedAt:serverTimestamp()});
+    const idx=todos.findIndex(x=>x.id===uid); if(idx>=0) todos[idx].status='inativo';
+    filtrados=[...todos]; updateStats(); renderDash(); renderUsers();
+    toast('Assinatura cancelada.','');
+  } catch(e) { console.error(e); toast('Erro ao cancelar.','err'); } finally { lov(false); }
+};
+
+/* modal detalhe */
+window.openUser = async uid => {
+  let u = todos.find(x=>x.id===uid);
+  if (!u) { lov(true); const s=await getDoc(doc(db,'users',uid)); lov(false); if(!s.exists()) return; u={id:s.id,...s.data()}; }
+  const st = stCard(u);
+  document.getElementById('muNome').textContent  = u.nome;
+  document.getElementById('muEmail').textContent = u.email;
+  const mems = (u.membros||[]).length
+    ? (u.membros||[]).map(m=>`<div class="ud-mr"><div class="ud-ma">${ini(m.nome)}</div><div><div class="ud-mn">${m.nome}</div><div class="ud-mm">${m.parentesco}${m.nasc?' · Nasc: '+fmtN(m.nasc):''}</div></div></div>`).join('')
+    : '<p style="font-size:13px;color:var(--gray)">Nenhum participante.</p>';
+  const senhaAtual = u.senhaCadastro || '—';
+  document.getElementById('muBody').innerHTML=`
+    <div class="ud-grid">
+      <div class="ud-it"><div class="ud-l">Nome</div><div class="ud-v">${u.nome}</div></div>
+      <div class="ud-it"><div class="ud-l">CPF</div><div class="ud-v">${u.cpf}</div></div>
+      <div class="ud-it"><div class="ud-l">E-mail</div><div class="ud-v">${u.email}</div></div>
+      <div class="ud-it"><div class="ud-l">Telefone</div><div class="ud-v">${u.telefone||'—'}</div></div>
+      <div class="ud-it"><div class="ud-l">Nascimento</div><div class="ud-v">${fmtN(u.nasc)}</div></div>
+      <div class="ud-it"><div class="ud-l">Status</div><div class="ud-v">${badge(st)}</div></div>
+      <div class="ud-it"><div class="ud-l">Nº Cartão</div><div class="ud-v code">${fmtCod(u.numCartao)}</div></div>
+      <div class="ud-it"><div class="ud-l">Válido até</div><div class="ud-v">${u.dataVenc||'—'}</div></div>
+      <div class="ud-it"><div class="ud-l">Adesão</div><div class="ud-v">${u.dataAdesao||'—'}</div></div>
+      <div class="ud-it"><div class="ud-l">Participantes</div><div class="ud-v">${(u.membros?.length||0)+1} de 6</div></div>
+    </div>
+
+    <!-- SENHA DE ACESSO -->
+    <div class="pw-section">
+      <div class="pw-section-title">🔐 Senha de acesso</div>
+      <div class="pw-row">
+        <div class="pw-val" id="pwDisplay">${senhaAtual}</div>
+        <button class="pw-eye" onclick="togglePwDisplay()" title="Mostrar/ocultar">👁</button>
+        <button class="pw-eye" onclick="togglePwEdit()" title="Alterar senha" style="background:#DBEAFE;color:#1D4ED8">✏️</button>
+      </div>
+      <div class="pw-edit-row" id="pwEditRow">
+        <input type="text" class="pw-inp" id="pwNova" placeholder="Nova senha (mín. 6 caracteres)">
+        <button class="pw-save" onclick="salvarSenha('${u.id}')">Salvar</button>
+      </div>
+    </div>
+
+    <div class="ud-mt">👨‍👩‍👧 Participantes do plano</div>${mems}`;
+  document.getElementById('muFoot').innerHTML=`
+    ${st==='pendente'||st==='inativo'||st==='vencido'?`<button class="btn-act-green" onclick="closeUser();ativar('${u.id}')">✅ Validar / Ativar</button>`:''}
+    ${st==='ativo'||st==='vencido'?`<button class="btn-act-blue" onclick="closeUser();renovar('${u.id}')">🔄 Renovar 1 ano</button>`:''}
+    ${st!=='inativo'?`<button class="btn-act-red" onclick="closeUser();cancelar('${u.id}')">❌ Cancelar</button>`:''}
+    <button class="btn-sec" onclick="closeUser()">Fechar</button>`;
+  document.getElementById('movUser').classList.add('open');
+};
+window.closeUser = () => document.getElementById('movUser').classList.remove('open');
+
+/* senha */
+window.togglePwDisplay = () => {
+  const el = document.getElementById('pwDisplay');
+  if (el) el.classList.toggle('show');
+};
+window.togglePwEdit = () => {
+  const row = document.getElementById('pwEditRow');
+  const inp = document.getElementById('pwNova');
+  if (row) { row.classList.toggle('show'); if (row.classList.contains('show') && inp) inp.focus(); }
+};
+window.salvarSenha = async uid => {
+  const nova = document.getElementById('pwNova')?.value.trim();
+  if (!nova || nova.length < 6) { toast('Senha precisa ter ao menos 6 caracteres.','err'); return; }
+  lov(true,'Salvando senha...');
+  try {
+    // 1. Salva no Firestore (campo senhaCadastro)
+    await updateDoc(doc(db,'users',uid),{ senhaCadastro: nova, updatedAt: serverTimestamp() });
+    // 2. Tenta atualizar Firebase Auth via REST API
+    const apiKey = 'AIzaSyDyJmQUyNKLGMdUJhdK2YxCYuaQkel7uiI';
+    const adminToken = await auth.currentUser.getIdToken();
+    await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ idToken: adminToken, localId: uid, password: nova, returnSecureToken: false })
+    }).catch(() => {}); // falha silenciosa — só o Firestore é garantido
+    // Atualiza local
+    const idx = todos.findIndex(x=>x.id===uid);
+    if (idx>=0) todos[idx].senhaCadastro = nova;
+    const disp = document.getElementById('pwDisplay');
+    if (disp) disp.textContent = nova;
+    const row = document.getElementById('pwEditRow');
+    if (row) row.classList.remove('show');
+    toast('Senha atualizada com sucesso!','ok');
+  } catch(e) { console.error(e); toast('Erro ao salvar senha.','err'); }
+  finally { lov(false); }
+};
+
+/* busca CPF */
+window.mkCpf = el => {
+  let v=el.value.replace(/\D/g,'').slice(0,11);
+  v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3}\.\d{3})(\d)/,'$1.$2').replace(/(\d{3}\.\d{3}\.\d{3})(\d{1,2})/,'$1-$2');
+  el.value=v;
+};
+window.doBusca = () => {
+  const cpf=document.getElementById('cpfInput').value.trim();
+  const div=document.getElementById('resCpf');
+  if (!cpf||cpf.replace(/\D/g,'').length<11){toast('Informe um CPF completo.','err');return;}
+  const u=todos.find(x=>x.cpf.replace(/\D/g,'')=== cpf.replace(/\D/g,''));
+  if (!u){div.innerHTML='<div class="rcard"><div class="nores"><div>🔍</div>Nenhum usuário com CPF <strong>'+cpf+'</strong>.</div></div>';return;}
+  const st=stCard(u);
+  const mems=(u.membros||[]).length
+    ?(u.membros||[]).map(m=>`<div class="rmem-row"><div class="rmem-av">${ini(m.nome)}</div><div><strong>${m.nome}</strong> · ${m.parentesco}</div></div>`).join('')
+    :'<p style="font-size:13px;color:var(--gray);padding:6px 0">Nenhum participante.</p>';
+  div.innerHTML=`
+    <div class="rcard">
+      <div class="rhead">
+        <div class="rav">${ini(u.nome)}</div>
+        <div><div class="rname">${u.nome}</div><div class="remail">${u.email}</div></div>
+        <div style="margin-left:auto">${badge(st)}</div>
+      </div>
+      <div class="rgrid">
+        <div class="ri"><div class="ri-l">CPF</div><div class="ri-v">${u.cpf}</div></div>
+        <div class="ri"><div class="ri-l">Telefone</div><div class="ri-v">${u.telefone||'—'}</div></div>
+        <div class="ri"><div class="ri-l">Nº Cartão</div><div class="ri-v code">${fmtCod(u.numCartao)}</div></div>
+        <div class="ri"><div class="ri-l">Válido até</div><div class="ri-v">${u.dataVenc||'—'}</div></div>
+        <div class="ri"><div class="ri-l">Adesão</div><div class="ri-v">${u.dataAdesao||'—'}</div></div>
+        <div class="ri"><div class="ri-l">Nascimento</div><div class="ri-v">${fmtN(u.nasc)}</div></div>
+      </div>
+      <div class="rmem"><div class="rmem-t">Participantes (${(u.membros?.length||0)+1})</div>${mems}</div>
+      <div class="ract">
+        ${st==='pendente'||st==='inativo'||st==='vencido'?`<button class="btn-act-green" onclick="ativar('${u.id}')">✅ Validar</button>`:''}
+        ${st==='ativo'||st==='vencido'?`<button class="btn-act-blue" onclick="renovar('${u.id}')">🔄 Renovar</button>`:''}
+        ${st!=='inativo'?`<button class="btn-act-red" onclick="cancelar('${u.id}')">❌ Cancelar</button>`:''}
+        <button class="abtn ver" onclick="openUser('${u.id}')">📋 Detalhes</button>
+      </div>
+    </div>`;
+};
+
+/* validar cartão */
+window.doValidate = async () => {
+  const cod=document.getElementById('codeInput').value.trim().replace(/\D/g,'');
+  const div=document.getElementById('resVal');
+  if(cod.length!==8){toast('Digite os 8 dígitos do cartão.','err');return;}
+  lov(true,'Verificando...');
+  try {
+    const cSnap=await getDoc(doc(db,'codes',cod));
+    if(!cSnap.exists()){lov(false);div.innerHTML='<div class="vres"><div class="vrh no"><div class="vri">❌</div><div><div class="vrs">Código inválido</div><div class="vrsu">Este código não está cadastrado.</div></div></div></div>';return;}
+    const uSnap=await getDoc(doc(db,'users',cSnap.data().uid));
+    lov(false);
+    if(!uSnap.exists()){div.innerHTML='<div class="vres"><div class="vrh no"><div class="vri">❌</div><div><div class="vrs">Usuário não encontrado</div><div class="vrsu">Código registrado mas sem usuário vinculado.</div></div></div></div>';return;}
+    const u=uSnap.data(); const st=stCard({...u});
+    const cls={ativo:'ok',inativo:'no',pendente:'pend',vencido:'exp'};
+    const ico={ativo:'✅',inativo:'❌',pendente:'⏳',vencido:'⚠️'};
+    const tit={ativo:'Cartão válido e ativo',inativo:'Cartão inativo',pendente:'Aguardando validação de pagamento',vencido:'Cartão vencido'};
+    const sub={ativo:'Titular autorizado a usar todos os benefícios.',inativo:'Cartão desativado.',pendente:'Pagamento não confirmado ainda.',vencido:'Validade expirada. Solicite a renovação.'};
+    const mems=(u.membros||[]).length?(u.membros||[]).map(m=>`<div class="vrr"><span class="vrrl">${m.parentesco}</span><span class="vrrv">${m.nome}</span></div>`).join(''):'';
+    div.innerHTML=`
+      <div class="vres">
+        <div class="vrh ${cls[st]}"><div class="vri">${ico[st]}</div><div><div class="vrs">${tit[st]}</div><div class="vrsu">${sub[st]}</div></div></div>
+        <div class="vrb">
+          <div class="vrr"><span class="vrrl">Titular</span><span class="vrrv">${u.nome}</span></div>
+          <div class="vrr"><span class="vrrl">CPF</span><span class="vrrv">${u.cpf}</span></div>
+          <div class="vrr"><span class="vrrl">Nº Cartão</span><span class="vrrv" style="font-family:'Montserrat',sans-serif;letter-spacing:2px;color:var(--tdeep)">${fmtCod(cod)}</span></div>
+          <div class="vrr"><span class="vrrl">Válido até</span><span class="vrrv">${u.dataVenc||'—'}</span></div>
+          <div class="vrr"><span class="vrrl">Status</span><span class="vrrv">${badge(st)}</span></div>
+          ${mems?'<div style="padding:7px 0 3px;font-size:10px;font-weight:800;color:var(--gray);text-transform:uppercase;letter-spacing:.5px">Participantes autorizados</div>'+mems:''}
+        </div>
+      </div>`;
+  } catch(e){lov(false);console.error(e);toast('Erro ao validar.','err');}
+};
+
+/* navegação */
+const pNames={dash:'Dashboard',users:'Usuários',search:'Buscar por CPF',validate:'Validar Cartão'};
+window.goPage = p => {
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sbi').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  document.getElementById('tbTitle').textContent = pNames[p]||p;
+  closeSb();
+};
+
+/* sidebar mobile */
+window.openSb  = () => { document.getElementById('sidebar').classList.add('open'); document.getElementById('sbOv').classList.add('show'); };
+window.closeSb = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sbOv').classList.remove('show'); };
+
+/* fechar modal clicando fora */
+document.getElementById('movUser').addEventListener('click', function(e){ if(e.target===this) window.closeUser(); });
+
+/* enter buscas */
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter'){
+    if (document.activeElement.id==='adSenha')   window.doLogin();
+    if (document.activeElement.id==='cpfInput')  window.doBusca();
+    if (document.activeElement.id==='codeInput') window.doValidate();
+  }
+});
+</script>
+</body>
+</html>
